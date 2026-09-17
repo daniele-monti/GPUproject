@@ -19,7 +19,7 @@ int main() {
         print_array(test_array, n);
     }
 
-    test_array = random_integers(n, min, max, time(NULL)+12);
+    test_array = random_integers(n, min, max, time(NULL)+6);
     if (test_array != NULL) {
         printf("Array of %d random numbers between %d and %d:\n", n, min, max);
         print_array(test_array, n);

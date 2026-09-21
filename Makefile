@@ -9,16 +9,17 @@ BUILD_DIR := ./build
 SRC_DIRS := ./src
 TEST_DIRS := ./tests
 
-MAIN_FILE_NAME := main.c
+MAIN_FILE_NAME := main.cu
 
 CC := gcc
 CXX := g++
+NVCC := nvcc
 
 # Find all the C and C++ files we want to compile
 # Note the single quotes around the * expressions. The shell will incorrectly expand these otherwise, but we want to send the * directly to the find command.
-SRCS := $(shell find $(SRC_DIRS) -name '*.cpp' -or -name '*.c')
+SRCS := $(shell find $(SRC_DIRS) -name '*.cpp' -or -name '*.c' -or -name '*.cu')
 
-TEST_SRCS := $(shell find $(TEST_DIRS) -name '*.cpp' -or -name '*.c')
+TEST_SRCS := $(shell find $(TEST_DIRS) -name '*.cpp' -or -name '*.c' -or -name '*.cu')
 TEST_SRCS += $(filter-out $(SRC_DIRS)/$(MAIN_FILE_NAME), $(SRCS))
 
 # Prepends BUILD_DIR and appends .o to every src file
@@ -38,11 +39,24 @@ INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 
 # The -MMD and -MP flags together generate Makefiles for us!
 # These files will have .d instead of .o as the output.
+# see links below for a more thorough explanation
+# https://make.mad-scientist.net/papers/advanced-auto-dependency-generation/
+# https://www.cse.unr.edu/~sushil/class/cs202/help/man/make/make_42.html
 CPPFLAGS := $(INC_FLAGS) -Wall -MMD -MP
+
+# needed for linking different compilation units together
+# https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/nvcc.html
+NVCCLDFLAGS := -dlto
+NVCCFLAGS := -dc -dlto $(INC_FLAGS) -MMD -MP
 
 # The final build step.
 $(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)
-	$(CXX) $(OBJS) -o $@ $(LDFLAGS)
+	$(NVCC) $(NVCCLDFLAGS) $(OBJS) -o $@
+
+# Build step for CU source
+$(BUILD_DIR)/%.cu.o: %.cu
+	mkdir -p $(dir $@)
+	$(NVCC) $(NVCCFLAGS) $(CXXFLAGS) -c $< -o $@
 
 # Build step for C source
 $(BUILD_DIR)/%.c.o: %.c
@@ -57,7 +71,7 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 
 .PHONY: test
 test: $(TEST_OBJS)
-	$(CXX) $(TEST_OBJS) -o $(BUILD_DIR)/$(TARGET_TEST) $(LDFLAGS)
+	$(NVCC) $(NVCCLDFLAGS) $(TEST_OBJS) -o $(BUILD_DIR)/$(TARGET_TEST)
 	$(BUILD_DIR)/$(TARGET_TEST)
 
 

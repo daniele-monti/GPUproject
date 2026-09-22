@@ -1,17 +1,6 @@
-#define CHECK(call)                                                            \
-{                                                                              \
-    const cudaError_t error = call;                                            \
-    if (error != cudaSuccess)                                                  \
-    {                                                                          \
-        fprintf(stderr, "Error: %s:%d, ", __FILE__, __LINE__);                 \
-        fprintf(stderr, "code: %d, reason: %s\n", error,                       \
-                cudaGetErrorString(error));                                    \
-    }                                                                          \
-}
-
 #include "sort.h"
 #include "utils.h"
-#include "types.h"
+#include "common.h"
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>

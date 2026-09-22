@@ -1,5 +1,5 @@
 #include "utils.h"
-#include "types.h"
+#include "common.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -23,4 +23,16 @@ void print_array(int* array, uint length) {
         printf("%d, ", array[i]);
     }
     printf("%d]\n", array[length-1]);
+}
+
+
+bool is_array_sorted(int *array, uint length) {
+    for (uint i = 0; i < length - 1; i++)
+		if (array[i] > array[i + 1]) {
+            printf("validation FAILED:\n");
+			printf("array[%d]=%d, but array[%d]=%d\n", i, array[i], i+1, array[i+1]);
+            return false;
+		}
+	printf("validation PASSED\n");
+    return true;
 }

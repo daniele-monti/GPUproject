@@ -6,7 +6,7 @@
 #include <time.h>
 
 int main() {
-    int n = 1024*4;
+    int n = 1024;
     int min = -100;
     int max = 100;
     

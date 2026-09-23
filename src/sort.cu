@@ -2,6 +2,9 @@
 #include "common.h"
 #include <stdlib.h>
 #include <memory.h>
+#include <cooperative_groups.h>
+namespace cg = cooperative_groups;
+
 
 /*
 __device__ __host__ inline void compare_swap(int* value_a, int* value_b) {
@@ -85,7 +88,52 @@ void merge_sort(int* array, uint length) {
     free(helper);
 }
 
+// ############################################################
+// all of the following algorithms work only for arrays whose 
+// length is a power of 2
 
+// this is for arrays whose length is not greater than SMEM_SIZE
+__global__ void bitonic_sort_small(int* d_in, uint length) {
+    uint smem_size = min(SMEM_SIZE, length);
+    __shared__ int smem[SMEM_SIZE];
+    uint idx = blockDim.x * blockIdx.x + threadIdx.x;
+    smem[idx + 0]             = d_in[idx + 0];
+    smem[idx + smem_size / 2] = d_in[idx + smem_size / 2];
+    bool ascending;
+    for (uint size = 2; size < length; size <<= 1) {
+        // bitmerge: we have to select which threads will be doing sorting in ascending
+        // order and which ones will be doing it in descending order
+        ascending = !(idx & (size / 2));
+        for (uint stride = size / 2; stride > 0; stride >>= 1) {
+            uint pos = 2 * idx - (idx % stride);
+            int left = smem[pos];
+            int right = smem[pos + stride];
+            if (
+                ( (left > right) &&  ascending ) ||
+                ( (left < right) && !ascending )
+            ) {
+                int temp = left;
+                smem[pos] = smem[pos + stride];
+                smem[pos + stride] = temp;
+            }
+            __syncthreads();
+        }
+    }
+    // last bitmerge, we default to ascending order
+    for (uint stride = length / 2; stride > 0; stride >>= 1) {
+        uint pos = 2 * idx - (idx % stride); // equivalent: 2*idx - (idx & (stride - 1))
+        int left = smem[pos];
+        int right = smem[pos + stride];
+        if (left > right) {
+            int temp = left;
+            smem[pos] = smem[pos + stride];
+            smem[pos + stride] = temp;
+        }
+        __syncthreads();
+    }
+    d_in[idx + 0]             = smem[idx + 0];
+    d_in[idx + smem_size / 2] = smem[idx + smem_size / 2];
+}
 
 // only works for array whose length is a power of 2
 __global__ void bitonic_merge(int* d_in, uint length) {
@@ -107,59 +155,22 @@ __global__ void bitonic_merge(int* d_in, uint length) {
     return;
 }
 
-// only works for array whose length is a power of 2
-__global__ void bitonic_sort(int* d_in, uint length) {
-    uint tid = threadIdx.x;
-    uint idx = blockDim.x * blockIdx.x + tid;
-    bool ascending;
-
-    for (uint size = 2; size < length; size <<= 1) {
-        // bitmerge: we have to select which threads will be doing sorting in ascending
-        // order and which ones will be doing it in descending order
-        ascending = !(idx & (size / 2));
-        for (uint stride = size / 2; stride > 0; stride >>= 1) {
-            uint pos = 2 * idx - (idx % stride);
-            int left = d_in[pos];
-            int right = d_in[pos + stride];
-            if (
-                ( (left > right) &&  ascending ) ||
-                ( (left < right) && !ascending )
-            ) {
-                int temp = left;
-                d_in[pos] = d_in[pos + stride];
-                d_in[pos + stride] = temp;
-            }
-        }
-        __syncthreads();
-    }
-    // last bitmerge, we default to ascending order
-    for (uint stride = length / 2; stride > 0; stride >>= 1) {
-        uint pos = 2 * idx - (idx % stride); // equivalent: 2*idx - (idx & (stride - 1))
-        int left = d_in[pos];
-        int right = d_in[pos + stride];
-        if (left > right) {
-            int temp = left;
-            d_in[pos] = d_in[pos + stride];
-            d_in[pos + stride] = temp;
-        }
-        __syncthreads();
-    }
-    return;
-}
 
 void bit_sort(int* array, uint length) {
     int* dev_array;
     size_t bytes = length*sizeof(int);
 
-    cudaMalloc(&dev_array, bytes);
-    cudaMemcpy(dev_array, array, bytes, cudaMemcpyHostToDevice);
+    CHECK(cudaMalloc(&dev_array, bytes));
+    CHECK(cudaMemcpy(dev_array, array, bytes, cudaMemcpyHostToDevice));
 
-    uint threads = 512;
-    uint blocks = (length + threads - 1) / threads;
+    uint threads = min(NUM_THREADS, length/2);
+    uint blocks = (length/2 + threads - 1) / threads;
 
-    bitonic_sort<<<blocks, threads>>>(dev_array, length);
+    printf("Threads: %d, blocks: %d, SMEM: %d\n", threads, blocks, SMEM_SIZE);
+    bitonic_sort_small<<<blocks, threads>>>(dev_array, length);
 
-    cudaMemcpy(array, dev_array, bytes, cudaMemcpyDeviceToHost);
+    CHECK(cudaMemcpy(array, dev_array, bytes, cudaMemcpyDeviceToHost));
+    CHECK(cudaDeviceSynchronize());
 
-    cudaFree(dev_array);
+    CHECK(cudaFree(dev_array));
 }

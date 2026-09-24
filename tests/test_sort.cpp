@@ -5,34 +5,49 @@
 #include <stdlib.h>
 #include <time.h>
 
-int main() {
-    int n = 1024*1024;
-    int min = -100;
-    int max = 100;
-    
-    int* test_array = random_integers(n, min, max, time(NULL));
+void test_sort(void (*algorithm)(int*, uint), uint length, int min, int max) {
+    int* test_array = random_integers(length, min, max, time(NULL));
     if (test_array != NULL) {
-        printf("Generated array of %d random numbers between %d and %d\n", n, min, max);
-        merge_sort(test_array, n);
-        printf("Mergesort: ");
-        is_array_sorted(test_array, n);
-    }
-
-    test_array = random_integers(n, min, max, time(NULL)+12);
-    if (test_array != NULL) {
-        printf("Generated array of %d random numbers between %d and %d\n", n, min, max);
-        quick_sort(test_array, n);
-        printf("Quicksort: ");
-        is_array_sorted(test_array, n);
-    }
-
-    test_array = random_integers(n, min, max, time(NULL)+12);
-    if (test_array != NULL) {
-        printf("Generated array of %d random numbers between %d and %d\n", n, min, max);
-        bit_sort(test_array, n);
-        printf("Bitsort: ");
-        is_array_sorted(test_array, n);
+        printf("Generated array of %d random numbers between %d and %d\n", length, min, max);
+        algorithm(test_array, length);
+        is_array_sorted(test_array, length);
+        printf("\n");
         free(test_array);
     }
+}
+
+int main() {
+    int n = 1024;
+    int min = -1000;
+    int max = 1000;
+    
+    printf("Mergesort: ");
+    test_sort(merge_sort, n, min, max);
+    
+    printf("Quicksort: ");
+    test_sort(quick_sort, n, min, max);
+    
+    // #############################à
+    
+    n = 128;
+    printf("Bitsort: ");
+    test_sort(bit_sort, n, min, max);
+    
+    n = 512;
+    printf("Bitsort: ");
+    test_sort(bit_sort, n, min, max);
+
+    n = 2048;
+    printf("Bitsort: ");
+    test_sort(bit_sort, n, min, max);
+    
+    n = 1024*1024;
+    printf("Bitsort: ");
+    test_sort(bit_sort, n, min, max);
+    
+    // 4 GiB of data
+    n = 1024*1024*1024;
+    printf("Bitsort: ");
+    test_sort(bit_sort, n, min, max);
     return 0;
 }

@@ -1,19 +1,7 @@
 #include "sort.h"
 #include "common.h"
-#include "utils.h"
 #include <stdlib.h>
 #include <memory.h>
-
-
-/*
-__device__ __host__ inline void compare_swap(int* value_a, int* value_b) {
-    int temp;
-    if (*value_a < *value_b ) {
-        temp = *value_a;
-
-    }
-}
-*/
 
 // quicksort
 uint partition(int* array, uint start, uint end) {
@@ -86,6 +74,8 @@ void merge_sort(int* array, uint length) {
     _merge_sort(array, helper, 0, length);
     free(helper);
 }
+
+
 
 // ############################################################
 // all of the following algorithms work only for arrays whose 
@@ -221,7 +211,7 @@ void bit_sort(int* array, uint length) {
     uint blocks = (length/2 + threads - 1) / threads;
     uint smem_size = min(SMEM_SIZE, length);
 
-    printf("Threads: %d, blocks: %d, SMEM: %d\n", threads, blocks, smem_size);
+    // printf("Threads: %d, blocks: %d, SMEM: %d\n", threads, blocks, smem_size);
     if (length <= SMEM_SIZE) {
         bitonic_sort_small<<<blocks, threads, smem_size * sizeof(int)>>>(dev_array, length);
     } else {

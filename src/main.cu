@@ -2,74 +2,39 @@
 #include "utils.h"
 #include "common.h"
 #include <stdio.h>
-#include <time.h>
 #include <stdlib.h>
 
-#define N 500
+#define N 1024 * 1024 * 32
 
-// kernel cumsum
-__global__ void cum_sum(int *a, int *b) {
-    int idx = threadIdx.x;
-    int sum = 0;
-    for (int j = 0; j < idx; j++) {
-        sum += a[j]; 
-    }
-    b[idx] = sum;
-}
-
-// Main function
 int main() {
-    int *a, *b;
-    int *dev_a, *dev_b;
-    int nBytes = N * sizeof(int);
-
-    a = (int *) malloc(nBytes);
-    b = (int *) malloc(nBytes);
-
-    for (int i = 0; i < N; i++) {
-        a[i] = 1;
-        b[i] = 0;
-    }
-
-    CHECK(cudaMalloc((void **) &dev_a, nBytes));
-    CHECK(cudaMalloc((void **) &dev_b, nBytes));
-
-    CHECK(cudaMemcpy(dev_a, a, nBytes, cudaMemcpyHostToDevice));
-    cudaMemcpy(dev_b, b, nBytes, cudaMemcpyHostToDevice);
-
-    cum_sum<<<1, N>>>(dev_a, dev_b);
+    double start_merge, stop_merge;
+    double start_quick, stop_quick;
+    double start_bit, stop_bit;
+    double speedup_merge, speedup_quick;
+    int min = -1000;
+    int max = 1000;
     
-    CHECK(cudaMemcpy(b, dev_b, nBytes, cudaMemcpyDeviceToHost));
-    CHECK(cudaDeviceSynchronize());
+    int* array = random_integers(N, min, max, time(NULL));
+    start_quick = milli_seconds();
+    quick_sort(array, N);
+    stop_quick = milli_seconds() - start_quick;
+	printf("Quicksort took: %f milliseconds on an array of %d elements\n", stop_quick, N);
 
-    printf("Position 4: %d\n", b[4]);
-    printf("Position 0: %d\n", b[0]);
-    printf("Position 10: %d\n", b[10]);
-    printf("Position 3: %d\n", b[3]);
-    printf("Position 20: %d\n", b[20]);
-    printf("Position 200: %d\n", b[200]);
+    array = random_integers(N, min, max, time(NULL));
+    start_merge = milli_seconds();
+    merge_sort(array, N);
+    stop_merge = milli_seconds() - start_merge;
+	printf("Mergesort took: %f milliseconds on an array of %d elements\n", stop_merge, N);
 
-    int n = 10;
-    int min = 1;
-    int max = 100;
-    
-    int* test_array = random_integers(n, min, max, time(NULL));
-    if (test_array != NULL) {
-        printf("Array of %d random numbers between %d and %d:\n", n, min, max);
-        print_array(test_array, n);
-        merge_sort(test_array, n);
-        printf("Mergesort: ");
-        print_array(test_array, n);
-    }
+    array = random_integers(N, min, max, time(NULL));
+    start_bit = milli_seconds();
+    bit_sort(array, N);
+    stop_bit = milli_seconds() - start_bit;
+	printf("Bitsort took: %f milliseconds on an array of %d elements\n", stop_bit, N);
+    speedup_quick = stop_quick / stop_bit;
+    speedup_merge = stop_merge / stop_bit;
+    printf("It had a speedup of %.3f on quicksort and of %.3f on mergesort\n", speedup_quick, speedup_merge);
 
-    test_array = random_integers(n, min, max, time(NULL)+12);
-    if (test_array != NULL) {
-        printf("Array of %d random numbers between %d and %d:\n", n, min, max);
-        print_array(test_array, n);
-        quick_sort(test_array, n);
-        printf("Quicksort: ");
-        print_array(test_array, n);
-        free(test_array);
-    }
-  return 0;
+    free(array);
+    return 0;
 }

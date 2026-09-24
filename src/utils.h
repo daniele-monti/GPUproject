@@ -8,4 +8,6 @@ void print_array(int* array, uint length);
 
 bool is_array_sorted(int *array, uint length);
 
+double milli_seconds();
+
 #endif

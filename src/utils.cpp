@@ -2,6 +2,8 @@
 #include "common.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+#include <stdint.h>
 
 int* random_integers(uint n, int min, int max, uint seed) {
     srand(seed);
@@ -35,4 +37,11 @@ bool is_array_sorted(int *array, uint length) {
 		}
 	printf("validation PASSED\n");
     return true;
+}
+
+
+double milli_seconds() {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)(ts.tv_sec * 1000) + (double)ts.tv_nsec / 1000000.0;
 }

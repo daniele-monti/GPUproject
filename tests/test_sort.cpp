@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-void test_sort(void (*algorithm)(int*, uint), uint length, int min, int max) {
+void test_sort(double (*algorithm)(int*, uint), uint length, int min, int max) {
     int* test_array = random_integers(length, min, max, time(NULL));
     if (test_array != NULL) {
         printf("Generated array of %d random numbers between %d and %d\n", length, min, max);

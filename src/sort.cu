@@ -1,5 +1,6 @@
 #include "sort.h"
 #include "common.h"
+#include "utils.h"
 #include <stdlib.h>
 #include <memory.h>
 
@@ -36,8 +37,11 @@ void _quick_sort(int* array, uint start, uint end) {
     }
 }
 
-void quick_sort(int* array, uint length) {
+double quick_sort(int* array, uint length) {
+    double start = milli_seconds();
     _quick_sort(array, 0, length);
+    double stop = milli_seconds();
+    return stop - start;
 }
 
 
@@ -69,10 +73,13 @@ void _merge_sort(int* array, int* helper, uint start, uint end) {
     }
 }
 
-void merge_sort(int* array, uint length) {
+double merge_sort(int* array, uint length) {
+    double start = milli_seconds();
     int* helper = (int*)malloc(sizeof(int) * length);
     _merge_sort(array, helper, 0, length);
     free(helper);
+    double stop = milli_seconds();
+    return stop - start;
 }
 
 
@@ -200,12 +207,22 @@ __global__ void bitonic_merge_step(int* d_in, uint size, uint stride) {
 }
 
 
-void bit_sort(int* array, uint length) {
+double bit_sort(int* array, uint length) {
+    cudaEvent_t start_alloc, stop_alloc, start_kernel, stop_kernel, start_copy, stop_copy;
+    CHECK(cudaEventCreate(&start_alloc));
+    CHECK(cudaEventCreate(&stop_alloc));
+    CHECK(cudaEventCreate(&start_kernel));
+    CHECK(cudaEventCreate(&stop_kernel));
+    CHECK(cudaEventCreate(&start_copy));
+    CHECK(cudaEventCreate(&stop_copy));
+
     int* dev_array;
     size_t bytes = length*sizeof(int);
 
+    CHECK(cudaEventRecord(start_alloc));
     CHECK(cudaMalloc(&dev_array, bytes));
     CHECK(cudaMemcpy(dev_array, array, bytes, cudaMemcpyHostToDevice));
+    CHECK(cudaEventRecord(stop_alloc));
 
     uint threads = min(NUM_THREADS, length/2);
     uint blocks = (length/2 + threads - 1) / threads;
@@ -213,8 +230,11 @@ void bit_sort(int* array, uint length) {
 
     // printf("Threads: %d, blocks: %d, SMEM: %d\n", threads, blocks, smem_size);
     if (length <= SMEM_SIZE) {
+        CHECK(cudaEventRecord(start_kernel));
         bitonic_sort_small<<<blocks, threads, smem_size * sizeof(int)>>>(dev_array, length);
+        CHECK(cudaEventRecord(stop_kernel));
     } else {
+        CHECK(cudaEventRecord(start_kernel));
         // do bitonic sort in shared memory until you can (i.e. until size <= SMEM_SIZE)
         bitonic_sort_chunks<<<blocks, threads>>>(dev_array);
         // now do the rest in global memory using iterated calls to the kernel in order to
@@ -225,9 +245,29 @@ void bit_sort(int* array, uint length) {
                 bitonic_merge_step<<<blocks, threads>>>(dev_array, size, stride);
             }
         }
+        CHECK(cudaEventRecord(stop_kernel));
 
     }
-
+    CHECK(cudaEventRecord(start_copy));
     CHECK(cudaMemcpy(array, dev_array, bytes, cudaMemcpyDeviceToHost));
     CHECK(cudaFree(dev_array));
+    CHECK(cudaEventRecord(stop_copy));
+
+    CHECK(cudaEventSynchronize(stop_copy));
+
+    float t_alloc, t_kernel, t_copy;
+    CHECK(cudaEventElapsedTime(&t_alloc, start_alloc, stop_alloc));
+    CHECK(cudaEventElapsedTime(&t_kernel, start_kernel, stop_kernel));
+    CHECK(cudaEventElapsedTime(&t_copy, start_copy, stop_copy));
+    
+    double gpu_time = (t_alloc + t_kernel + t_copy);
+    
+    CHECK(cudaEventDestroy(start_alloc));
+    CHECK(cudaEventDestroy(stop_alloc));
+    CHECK(cudaEventDestroy(start_kernel));
+    CHECK(cudaEventDestroy(stop_kernel));
+    CHECK(cudaEventDestroy(start_copy));
+    CHECK(cudaEventDestroy(stop_copy));
+
+    return gpu_time;
 }

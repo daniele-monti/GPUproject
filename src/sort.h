@@ -2,10 +2,10 @@
 #define _SORT_H
 #include "common.h"
 
-void quick_sort(int* array, uint length);
+double quick_sort(int* array, uint length);
 
-void merge_sort(int* array, uint length);
+double merge_sort(int* array, uint length);
 
-void bit_sort(int* array, uint length);
+double bit_sort(int* array, uint length);
 
 #endif

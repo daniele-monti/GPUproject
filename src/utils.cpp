@@ -6,18 +6,18 @@
 #include <stdint.h>
 
 int* random_integers(uint n, int min, int max, uint seed) {
-    srand(seed);
+    // The seed must be a local variable to the thread
+    uint local_seed = seed;
     int* array = (int*)malloc(n * sizeof(int));
     if (array == NULL) {
         printf("Error: memory allocation failed\n");
         return NULL;
     }
     for (uint i = 0; i < n; i++) {
-        array[i] = min + rand() % (max - min + 1);
+        array[i] = min + rand_r(&local_seed) % (max - min + 1);
     }
     return array;
 }
-
 
 void print_array(int* array, uint length) {
     printf("[");
@@ -42,6 +42,6 @@ bool is_array_sorted(int *array, uint length) {
 
 double milli_seconds() {
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
     return (double)(ts.tv_sec * 1000) + (double)ts.tv_nsec / 1000000.0;
 }

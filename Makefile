@@ -42,12 +42,12 @@ INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 # see links below for a more thorough explanation
 # https://make.mad-scientist.net/papers/advanced-auto-dependency-generation/
 # https://www.cse.unr.edu/~sushil/class/cs202/help/man/make/make_42.html
-CPPFLAGS := $(INC_FLAGS) -Wall -MMD -MP
+CPPFLAGS := $(INC_FLAGS) -Wall -lpthread -MMD -MP
 
 # needed for linking different compilation units together
 # https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/nvcc.html
 NVCCLDFLAGS := -dlto
-NVCCFLAGS := -dc -dlto $(INC_FLAGS) -MMD -MP
+NVCCFLAGS := -dc -dlto -lpthread $(INC_FLAGS) -MMD -MP
 
 # The final build step.
 $(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)

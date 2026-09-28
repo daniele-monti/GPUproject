@@ -3,38 +3,94 @@
 #include "common.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <memory.h>
+#include <pthread.h>
 
-#define N 1024 * 1024 * 32
+#define START 1024
+#define STEP 2
+#define FINISH 1024 * 1024 * 1024
 
-int main() {
-    double start_merge, stop_merge;
-    double start_quick, stop_quick;
-    double start_bit, stop_bit;
+#define N 32
+
+typedef struct {
+    int thread_id;
+    uint n;
+    FILE *stats;
+    pthread_mutex_t* mutex_file;
+} ThreadData;
+
+void* run(void* arg) {
+    double quick, merge, bit;
     double speedup_merge, speedup_quick;
     int min = -1000;
     int max = 1000;
+    ThreadData* data = (ThreadData*) arg;
+
+    int *q, *m, *b;
+    q = random_integers(data->n, min, max, data->thread_id + 11);
+    size_t bytes = data->n*sizeof(int);
+    m = (int*)malloc(bytes);
+    b = (int*)malloc(bytes);
+    memcpy(m, q, bytes);
+    memcpy(b, q, bytes);
+
     
-    int* array = random_integers(N, min, max, time(NULL));
-    start_quick = milli_seconds();
-    quick_sort(array, N);
-    stop_quick = milli_seconds() - start_quick;
-	printf("Quicksort took: %f milliseconds on an array of %d elements\n", stop_quick, N);
+    quick = quick_sort(q, data->n);
 
-    array = random_integers(N, min, max, time(NULL));
-    start_merge = milli_seconds();
-    merge_sort(array, N);
-    stop_merge = milli_seconds() - start_merge;
-	printf("Mergesort took: %f milliseconds on an array of %d elements\n", stop_merge, N);
+    merge = merge_sort(m, data->n);
 
-    array = random_integers(N, min, max, time(NULL));
-    start_bit = milli_seconds();
-    bit_sort(array, N);
-    stop_bit = milli_seconds() - start_bit;
-	printf("Bitsort took: %f milliseconds on an array of %d elements\n", stop_bit, N);
-    speedup_quick = stop_quick / stop_bit;
-    speedup_merge = stop_merge / stop_bit;
-    printf("It had a speedup of %.3f on quicksort and of %.3f on mergesort\n", speedup_quick, speedup_merge);
+    bit = bit_sort(b, data->n);
+    speedup_quick = quick / bit;
+    speedup_merge = merge / bit;
+    
+    pthread_mutex_lock(data->mutex_file);
+    fprintf(data->stats, "%d,%f,%f,%f,%f,%f\n", data->n, quick, merge, bit, speedup_quick, speedup_merge);
+    fflush(data->stats);
+    pthread_mutex_unlock(data->mutex_file);
+    free(q);
+    free(m);
+    free(b);
 
-    free(array);
+    pthread_exit(NULL);
+}
+
+
+int main() {
+    // 
+    cudaFree(NULL);
+
+    pthread_t threads[N];
+    ThreadData args[N];
+
+    pthread_mutex_t mutex;
+    pthread_mutex_init(&mutex, NULL);
+    
+    FILE *stats;
+    stats = fopen("stats.csv", "w");
+    if (stats == NULL) {
+        printf("Could not open file\n");
+        return 1;
+    }
+    fprintf(stats, "Length,Quicksort,Mergesort,Bitsort,Speedup_q,Speedup_m\n");
+
+    for (uint n = START; n <= FINISH; n *= STEP) {
+        for (int i = 0; i < N; i++) {
+            args[i].n = n;
+            args[i].stats = stats;
+            args[i].mutex_file = &mutex;
+            
+            int rc = pthread_create(&threads[i], NULL, run, (void*)&args[i]);
+            if (rc) {
+                fprintf(stderr, "Errore nella creazione del thread %d\n", i);
+                exit(-1);
+            }
+        }
+        
+        for (int i = 0; i < N; i++) {
+            pthread_join(threads[i], NULL);
+        }
+    }
+    fclose(stats);
+    pthread_mutex_destroy(&mutex);
     return 0;
 }

@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-typedef unsigned long usize;
 typedef unsigned int uint;
 
 // my gpu has a max number of threads for sm of 1536, i.e. 3 blocks of 512 threads

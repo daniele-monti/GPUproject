@@ -26,9 +26,9 @@ int main() {
     fprintf(stats, "Length,Quicksort,Mergesort,Bitsort,Speedup_q,Speedup_m\n");
 
     double start_merge, stop_merge;
-    //double start_quick, stop_quick;
+    double start_quick, stop_quick;
     double start_bit, stop_bit;
-    double speedup_merge;// speedup_quick;
+    double speedup_merge, speedup_quick;
     int min = -1000;
     int max = 1000;
 
@@ -37,14 +37,14 @@ int main() {
             int *q, *m, *b;
             b = random_integers(n, min, max, n + i + 11);
             size_t bytes = n*sizeof(int);
-            //q = (int*)malloc(bytes);
+            q = (int*)malloc(bytes);
             m = (int*)malloc(bytes);
             memcpy(m, b, bytes);
-            //memcpy(q, b, bytes);
+            memcpy(q, b, bytes);
 
-            //start_quick = milli_seconds();
-            //quick_sort(q, n);
-            //stop_quick = milli_seconds() - start_quick;
+            start_quick = milli_seconds();
+            quick_sort(q, n);
+            stop_quick = milli_seconds() - start_quick;
 
             start_merge = milli_seconds();
             merge_sort(m, n);
@@ -53,17 +53,16 @@ int main() {
             start_bit = milli_seconds();
             bit_sort(b, n);
             stop_bit = milli_seconds() - start_bit;
-            //speedup_quick = stop_quick / stop_bit;
+            speedup_quick = stop_quick / stop_bit;
             speedup_merge = stop_merge / stop_bit;
 
-            fprintf(stats, "%d,%s,%f,%f,%s,%f\n", n, "", stop_merge, stop_bit, "", speedup_merge);
+            fprintf(stats, "%d,%f,%f,%f,%f,%f\n", n, stop_quick, stop_merge, stop_bit, speedup_quick, speedup_merge);
             fflush(stats);
-            //free(q);
+            free(q);
             free(m);
             free(b);
         }
     }
     fclose(stats);
-
     return 0;
 }

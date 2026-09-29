@@ -42,6 +42,6 @@ bool is_array_sorted(int *array, uint length) {
 
 double milli_seconds() {
     struct timespec ts;
-    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
+    clock_gettime(CLOCK_MONOTONIC, &ts);
     return (double)(ts.tv_sec * 1000) + (double)ts.tv_nsec / 1000000.0;
 }
